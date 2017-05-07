@@ -11,7 +11,7 @@ P2pchat in C
 - [x] Receive Message
 - [x] Add Peers with random generated String (current pseudo hash with time seed)
 - [ ] Actual SHA Hashing algorithm
-- [ ] Hashed Messages
+- [ ] Proper Messages
 - [ ] Broadcast for lan (Bootstrapping)
 - [ ] Peer Exchange
 - [ ] End-To-End Encryption preferably AES
