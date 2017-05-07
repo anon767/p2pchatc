@@ -22,8 +22,8 @@ boolean checkSockaddr(struct sockaddr_in a, struct sockaddr_in b) {
 
 boolean addrExists(peer *peers, struct sockaddr_in *b) {
     peer *current = peers;
-    while (current->next != NULL) {
-        if (checkSockaddr(current->next->addr, *b)) {
+    while (current != NULL) {
+        if (checkSockaddr(current->addr, *b)) {
             return 1;
         }
         current = current->next;

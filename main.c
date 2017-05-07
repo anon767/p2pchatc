@@ -10,20 +10,23 @@
 #pragma comment(lib, "ws2_32.lib")
 #endif
 
+#include <time.h>
 #include <pthread.h>
 #include <semaphore.h>
 #include <ws2tcpip.h>
 #include "message.h"
 #include "peer.h"
 
-pthread_mutex_t stdout_lock;
-pthread_mutex_t peer_list_lock;
+
+#define DEFAULTSERVERPORT 5555
+boolean running;
+HANDLE receiveThread;
 peer *self;
 int sock;
 WSADATA data;
 
 char *gen_random(const int len) {
-    char *s = malloc(sizeof(char) * len);
+    char * s = malloc(sizeof(char)*len);
     static const char alphanum[] =
             "0123456789"
                     "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -44,11 +47,11 @@ void setupSocket() {
         fprintf(stderr, "%s\n", "error - error creating socket.");
         abort();
     }
-    self->hash = gen_random(5);
+    self->hash = gen_random(10);
     self->next = NULL;
     self->addr.sin_family = AF_INET;
     self->addr.sin_addr.s_addr = htonl(INADDR_ANY);
-    self->port = 5555;
+    self->port = DEFAULTSERVERPORT;
     self->addr.sin_port = htons(self->port);
     if (bind(sock, (struct sockaddr *) &(self->addr), sizeof(self->addr))) {
         fprintf(stderr, "%s\n", "error - error binding.");
@@ -63,15 +66,18 @@ void receive_packet() {
 
     socklen_t addrlen = 10;
     message *pkt = malloc(sizeof(message));
+
     int status;
     while (1) {
         struct sockaddr_storage src_addr;
         socklen_t src_addr_len = sizeof(src_addr);
-        ssize_t count = recvfrom(sock, &pkt->body, sizeof(pkt->body), 0, (struct sockaddr *) &src_addr, &src_addr_len);
+        ssize_t count = recvfrom(sock, pkt->body, MESSAGESIZE, 0, (struct sockaddr *) &src_addr, &src_addr_len);
         if (!addrExists(self, (struct sockaddr_in *) &src_addr)) {
             peer *p = malloc(sizeof(peer));
             p->addr = *(struct sockaddr_in *) &src_addr;
-            p->hash = gen_random(5);
+            p->hash = gen_random(10);
+            p->valid = 1;
+            p->next = NULL;
             addToTail(self, p);
             printf("added peer %s\r\n", p->hash);
         }
@@ -86,10 +92,48 @@ void receive_packet() {
     }
 }
 
+void sendToIP(char *ip, const char *content) {
+    struct sockaddr_in si_other;
+    int s;
+    si_other.sin_family = AF_INET;
+    si_other.sin_port = htons(DEFAULTSERVERPORT);
+    si_other.sin_addr.S_un.S_addr = inet_addr(ip);
+    if ((s = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == SOCKET_ERROR) {
+        printf("socket() failed with error code : %d \r\n", WSAGetLastError());
+    }
+    if (sendto(s, content, strlen(content), 0, (struct sockaddr *) &si_other, sizeof(si_other)) == SOCKET_ERROR) {
+        printf("sendto() failed with error code : %d \r\n", WSAGetLastError());
+    }
+}
+
+void sendToPeers(peer *peers, const char *content) {
+    peer *current = peers;
+    while (current != NULL) {
+        char *ip = inet_ntoa(current->addr.sin_addr);
+        printf("propagating to %s Hash: %s \r\n", ip, current->hash);
+        sendToIP(ip, content);
+        current = current->next;
+    }
+}
+
+void scan() {
+    char *input = malloc(sizeof(char) * 1024);
+    while (running) {
+        scanf("%s", input);
+        sendToPeers(self->next, input);
+    }
+    free(input);
+}
+
 int main() {
     WSAStartup(MAKEWORD(2, 2), &data);
     setupSocket();
-    receive_packet();
+    running = 1;
+    receiveThread = CreateThread(NULL, 0, receive_packet, NULL, 0, NULL);
+    if (receiveThread) {
+        printf("Listening now\r\n");
+    }
+    scan();
     WSACleanup();
     return 0;
 }

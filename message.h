@@ -4,8 +4,9 @@
 
 #ifndef P2PCHATC_MESSAGE_H
 #define P2PCHATC_MESSAGE_H
+#define MESSAGESIZE 2014
 typedef struct packet_t {
-    char * body[5000];
+    char body[MESSAGESIZE];
     char * senderHash;
 } message;
 
