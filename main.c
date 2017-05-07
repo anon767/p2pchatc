@@ -26,12 +26,13 @@ int sock;
 WSADATA data;
 
 char *gen_random(const int len) {
-    char * s = malloc(sizeof(char)*len);
+    char *s = malloc(sizeof(char) * len);
     static const char alphanum[] =
             "0123456789"
                     "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
                     "abcdefghijklmnopqrstuvwxyz";
 
+    srand(time(NULL));
     for (int i = 0; i < len; ++i) {
         s[i] = alphanum[rand() % (sizeof(alphanum) - 1)];
     }
@@ -65,10 +66,10 @@ void receive_packet() {
     peer *sender = malloc(sizeof(peer));
 
     socklen_t addrlen = 10;
-    message *pkt = malloc(sizeof(message));
 
     int status;
     while (1) {
+        message *pkt = (message *) malloc(sizeof(message));
         struct sockaddr_storage src_addr;
         socklen_t src_addr_len = sizeof(src_addr);
         ssize_t count = recvfrom(sock, pkt->body, MESSAGESIZE, 0, (struct sockaddr *) &src_addr, &src_addr_len);
@@ -88,7 +89,7 @@ void receive_packet() {
         } else {
             printf("%s\r\n", pkt->body);
         }
-
+        free(pkt);
     }
 }
 
@@ -117,12 +118,14 @@ void sendToPeers(peer *peers, const char *content) {
 }
 
 void scan() {
-    char *input = malloc(sizeof(char) * 1024);
+
     while (running) {
+        char *input = (char *) malloc(sizeof(char) * 1024);
         scanf("%s", input);
         sendToPeers(self->next, input);
+        free(input);
     }
-    free(input);
+
 }
 
 int main() {
