@@ -17,7 +17,7 @@
 #include <ws2tcpip.h>
 #include "message.h"
 #include "peer.h"
-
+#include "sha256.h"
 
 #define DEFAULTSERVERPORT 5555
 boolean running;
@@ -102,16 +102,18 @@ void sendToIP(char *ip, const char *content) {
  * @param peers
  * @param content
  */
-void sendToPeers(peer *peers, const char *content) {
+void sendToPeers(peer *peers,  char *content) {
     peer *current = peers;
     while (current != NULL) {
-        char *contentWithHash = prependString(prependString(self->hash, gen_random()), content);
+        char *contentHash = hashString(content);
+        char *contentWithHash = prependString(prependString(self->hash, contentHash), content);
         char *ip = inet_ntoa(current->addr.sin_addr);
         fprintf(stdout, "propagating to %s Hash: %s \r\n", ip, current->hash);
         sendToIP(ip, contentWithHash);
         current = current->next;
         free(&ip);
         free(&contentWithHash);
+        free(&contentHash);
     }
 }
 

@@ -52,7 +52,7 @@ char **str_split(const char *a_str, const char a_delim) {
         char *token = strtok(tmp2, delim);
 
         while (token) {
-           // assert(idx < count);
+            // assert(idx < count);
             *(result + idx++) = strdup(token);
             token = strtok(0, delim);
         }

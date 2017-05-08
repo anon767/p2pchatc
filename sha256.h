@@ -17,18 +17,22 @@
 
 /**************************** DATA TYPES ****************************/
 typedef unsigned char BYTE;             // 8-bit byte
-typedef unsigned int  WORD;             // 32-bit word, change to "long" for 16-bit machines
+typedef unsigned int WORDSHA;             // 32-bit word, change to "long" for 16-bit machines
 
 typedef struct {
     BYTE data[64];
-    WORD datalen;
+    WORDSHA datalen;
     unsigned long long bitlen;
-    WORD state[8];
+    WORDSHA state[8];
 } SHA256_CTX;
 
 /*********************** FUNCTION DECLARATIONS **********************/
 void sha256_init(SHA256_CTX *ctx);
+
 void sha256_update(SHA256_CTX *ctx, const BYTE data[], size_t len);
+
 void sha256_final(SHA256_CTX *ctx, BYTE hash[]);
+
+ char *hashString(char *text);
 
 #endif   // SHA256_H

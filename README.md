@@ -9,7 +9,7 @@ P2pchat in C
 - [x] Linked-List Peers
 - [x] Receive Message
 - [x] Add Peers with random generated String (current pseudo hash)
-- [ ] Actual SHA Hashing algorithm
+- [x] Actual SHA Hashing algorithm
 - [ ] Proper Hashed Messages
 - [ ] Broadcast for lan (Bootstrapping)
 - [ ] Peer Exchange
