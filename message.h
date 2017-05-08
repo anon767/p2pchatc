@@ -4,10 +4,14 @@
 
 #ifndef P2PCHATC_MESSAGE_H
 #define P2PCHATC_MESSAGE_H
-#define MESSAGESIZE 2014
+#define MESSAGESIZE 256
+#define HASHSIZE 5 //5 chars
+#define DELIMITER "|"
 typedef struct packet_t {
     char body[MESSAGESIZE];
-    char * senderHash;
+    char *senderHash;
 } message;
+
+char *prependString(char *stringa, char *stringb);
 
 #endif //P2PCHATC_MESSAGE_H

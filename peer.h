@@ -13,9 +13,6 @@
 
 #pragma comment(lib, "ws2_32.lib")
 #endif
-struct peer;
-
-
 typedef struct peer {
     boolean valid;
     char *hash;

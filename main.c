@@ -3,6 +3,7 @@
 
 #ifdef __linux__
 #include <sys/socket.h>
+
 #elif _WIN32
 
 #include <Windows.h>
@@ -25,7 +26,8 @@ peer *self;
 int sock;
 WSADATA data;
 
-char *gen_random(const int len) {
+char *gen_random() {
+    int len = HASHSIZE;
     char *s = malloc(sizeof(char) * len);
     static const char alphanum[] =
             "0123456789"
@@ -48,7 +50,7 @@ void setupSocket() {
         fprintf(stderr, "%s\n", "error - error creating socket.");
         abort();
     }
-    self->hash = gen_random(10);
+    self->hash = gen_random();
     self->next = NULL;
     self->addr.sin_family = AF_INET;
     self->addr.sin_addr.s_addr = htonl(INADDR_ANY);
@@ -72,24 +74,25 @@ void receive_packet() {
         message *pkt = (message *) malloc(sizeof(message));
         struct sockaddr_storage src_addr;
         socklen_t src_addr_len = sizeof(src_addr);
-        ssize_t count = recvfrom(sock, pkt->body, MESSAGESIZE, 0, (struct sockaddr *) &src_addr, &src_addr_len);
+        ssize_t count = recvfrom(sock, pkt->body, sizeof(pkt->body), 0, (struct sockaddr *) &src_addr, &src_addr_len);
         if (!addrExists(self, (struct sockaddr_in *) &src_addr)) {
             peer *p = malloc(sizeof(peer));
             p->addr = *(struct sockaddr_in *) &src_addr;
-            p->hash = gen_random(10);
             p->valid = 1;
+            p->hash = gen_random(); //just initial fill
             p->next = NULL;
             addToTail(self, p);
-            printf("added peer %s\r\n", p->hash);
+            fprintf(stdout, "added peer %s\r\n", p->hash);
+            free(&p);
         }
         if (count == -1) {
-            printf("%s", strerror(errno));
+            fprintf(stdout, "%s", strerror(errno));
         } else if (count == sizeof(pkt->body)) {
-            printf("datagram too large for buffer: truncated");
+            fprintf(stdout, "datagram too large for buffer: truncated");
         } else {
-            printf("%s\r\n", pkt->body);
+            fprintf(stdout, "%s\n", pkt->body);
         }
-        free(pkt);
+        free(&pkt);
     }
 }
 
@@ -100,30 +103,33 @@ void sendToIP(char *ip, const char *content) {
     si_other.sin_port = htons(DEFAULTSERVERPORT);
     si_other.sin_addr.S_un.S_addr = inet_addr(ip);
     if ((s = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == SOCKET_ERROR) {
-        printf("socket() failed with error code : %d \r\n", WSAGetLastError());
+        fprintf(stdout, "socket() failed with error code : %d \r\n", WSAGetLastError());
     }
     if (sendto(s, content, strlen(content), 0, (struct sockaddr *) &si_other, sizeof(si_other)) == SOCKET_ERROR) {
-        printf("sendto() failed with error code : %d \r\n", WSAGetLastError());
+        fprintf(stdout, "sendto() failed with error code : %d \r\n", WSAGetLastError());
     }
 }
 
 void sendToPeers(peer *peers, const char *content) {
     peer *current = peers;
     while (current != NULL) {
+        char *contentWithHash = prependString(self->hash, content);
         char *ip = inet_ntoa(current->addr.sin_addr);
-        printf("propagating to %s Hash: %s \r\n", ip, current->hash);
-        sendToIP(ip, content);
+        fprintf(stdout, "propagating to %s Hash: %s \r\n", ip, current->hash);
+        sendToIP(ip, contentWithHash);
         current = current->next;
+        free(&ip);
+        free(&contentWithHash);
     }
 }
 
 void scan() {
 
     while (running) {
-        char *input = (char *) malloc(sizeof(char) * 1024);
-        scanf("%s", input);
+        char *input = (char *) malloc(sizeof(char) * MESSAGESIZE);
+        fgets(input, MESSAGESIZE, stdin);
         sendToPeers(self->next, input);
-        free(input);
+        free(&input);
     }
 
 }
@@ -134,7 +140,7 @@ int main() {
     running = 1;
     receiveThread = CreateThread(NULL, 0, receive_packet, NULL, 0, NULL);
     if (receiveThread) {
-        printf("Listening now\r\n");
+        fprintf(stdout, "Listening now\r\n");
     }
     scan();
     WSACleanup();
