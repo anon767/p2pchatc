@@ -14,4 +14,4 @@ P2pchat in C
 - [ ] Broadcast for lan (Bootstrapping)
 - [ ] Peer Exchange
 - [ ] End-To-End Encryption preferably AES
-- [x] Sending Messages
+- [x] Sending Messages (Format: SenderHash|MessageHash|Message)

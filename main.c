@@ -26,22 +26,6 @@ peer *self;
 int sock;
 WSADATA data;
 
-char *gen_random() {
-    int len = HASHSIZE;
-    char *s = malloc(sizeof(char) * len);
-    static const char alphanum[] =
-            "0123456789"
-                    "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-                    "abcdefghijklmnopqrstuvwxyz";
-
-    srand(time(NULL));
-    for (int i = 0; i < len; ++i) {
-        s[i] = alphanum[rand() % (sizeof(alphanum) - 1)];
-    }
-
-    s[len] = 0;
-    return s;
-}
 
 void setupSocket() {
     self = malloc(sizeof(peer));
@@ -69,22 +53,25 @@ void receive_packet() {
 
     socklen_t addrlen = 10;
 
-    int status;
-    while (1) {
+    boolean status = 1;
+    while (status) {
         message *pkt = (message *) malloc(sizeof(message));
         struct sockaddr_storage src_addr;
         socklen_t src_addr_len = sizeof(src_addr);
         ssize_t count = recvfrom(sock, pkt->body, sizeof(pkt->body), 0, (struct sockaddr *) &src_addr, &src_addr_len);
+        char **tokens = str_split(pkt->body, DELIMITERCHAR);
         if (!addrExists(self, (struct sockaddr_in *) &src_addr)) {
             peer *p = malloc(sizeof(peer));
             p->addr = *(struct sockaddr_in *) &src_addr;
             p->valid = 1;
-            p->hash = gen_random(); //just initial fill
             p->next = NULL;
+            p->hash = (*tokens); //set hash
             addToTail(self, p);
             fprintf(stdout, "added peer %s\r\n", p->hash);
             free(&p);
         }
+        pkt->senderHash = (*tokens);
+        pkt->hash = (*tokens + 1);
         if (count == -1) {
             fprintf(stdout, "%s", strerror(errno));
         } else if (count == sizeof(pkt->body)) {
@@ -110,10 +97,15 @@ void sendToIP(char *ip, const char *content) {
     }
 }
 
+/**
+ * SenderHash|MessageHash|Message
+ * @param peers
+ * @param content
+ */
 void sendToPeers(peer *peers, const char *content) {
     peer *current = peers;
     while (current != NULL) {
-        char *contentWithHash = prependString(self->hash, content);
+        char *contentWithHash = prependString(prependString(self->hash, gen_random()), content);
         char *ip = inet_ntoa(current->addr.sin_addr);
         fprintf(stdout, "propagating to %s Hash: %s \r\n", ip, current->hash);
         sendToIP(ip, contentWithHash);
@@ -124,10 +116,10 @@ void sendToPeers(peer *peers, const char *content) {
 }
 
 void scan() {
-
     while (running) {
         char *input = (char *) malloc(sizeof(char) * MESSAGESIZE);
         fgets(input, MESSAGESIZE, stdin);
+        input[strlen(input) - 1] = '\0';
         sendToPeers(self->next, input);
         free(&input);
     }
